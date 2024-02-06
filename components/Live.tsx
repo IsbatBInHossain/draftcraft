@@ -1,9 +1,16 @@
-import { useMyPresence, useOthers } from '@/liveblocks.config'
+import {
+  useBroadcastEvent,
+  useEventListener,
+  useMyPresence,
+  useOthers,
+} from '@/liveblocks.config'
 import LiveCursors from './cursor/LiveCursors'
 import { useCallback, useEffect, useState } from 'react'
 import CursorChat from './cursor/CursorChat'
-import { CursorMode, CursorState, Reaction } from '@/types/type'
+import { CursorMode, CursorState, Reaction, ReactionEvent } from '@/types/type'
 import ReactionSelector from './reaction/ReactionButton'
+import FlyingReaction from './reaction/FlyingReaction'
+import useInterval from '@/hooks/useInterval'
 
 const Live = () => {
   const others = useOthers()
@@ -11,7 +18,51 @@ const Live = () => {
   const [cursorState, setCursorState] = useState<CursorState>({
     mode: CursorMode.Hidden,
   })
-  const [reaction, setReaction] = useState<Reaction[]>([])
+  const [reactions, setReactions] = useState<Reaction[]>([])
+  const broadcast = useBroadcastEvent()
+
+  useInterval(() => {
+    setReactions(reactions =>
+      reactions.filter(reaction => reaction.timestamp > Date.now() - 3000)
+    )
+  }, 1000)
+
+  useInterval(() => {
+    if (
+      cursorState.mode === CursorMode.Reaction &&
+      cursorState.isPressed &&
+      cursor
+    ) {
+      // concat all the reactions created on mouse click
+      setReactions(reactions =>
+        reactions.concat([
+          {
+            point: { x: cursor.x, y: cursor.y },
+            value: cursorState.reaction,
+            timestamp: Date.now(),
+          },
+        ])
+      )
+      broadcast({
+        x: cursor.x,
+        y: cursor.y,
+        value: cursorState.reaction,
+      })
+    }
+  }, 100)
+
+  useEventListener(eventData => {
+    const event = eventData.event as ReactionEvent
+    setReactions(reactions =>
+      reactions.concat([
+        {
+          point: { x: event.x, y: event.y },
+          value: event.value,
+          timestamp: Date.now(),
+        },
+      ])
+    )
+  })
 
   // Listen to keyboard events to change the cursor state
   useEffect(() => {
@@ -45,6 +96,10 @@ const Live = () => {
     }
   }, [updateMyPresence])
 
+  const setReaction = useCallback((reaction: string) => {
+    setCursorState({ mode: CursorMode.Reaction, reaction, isPressed: false })
+  }, [])
+
   const handlePointerMove = useCallback(
     (event: React.PointerEvent) => {
       event.preventDefault()
@@ -63,13 +118,29 @@ const Live = () => {
     [updateMyPresence]
   )
 
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent) => {
+      setCursorState((state: CursorState) =>
+        cursorState.mode === CursorMode.Reaction
+          ? { ...state, isPressed: false }
+          : { ...state }
+      )
+    },
+    [cursorState.mode]
+  )
+
   const handlePointerDown = useCallback(
     (event: React.PointerEvent) => {
       const x = event.clientX - event.currentTarget.getBoundingClientRect().x
       const y = event.clientY - event.currentTarget.getBoundingClientRect().y
       updateMyPresence({ cursor: { x, y } })
+      setCursorState((state: CursorState) =>
+        cursorState.mode === CursorMode.Reaction
+          ? { ...state, isPressed: true }
+          : { ...state }
+      )
     },
-    [updateMyPresence]
+    [cursorState.mode, updateMyPresence]
   )
 
   return (
@@ -77,9 +148,19 @@ const Live = () => {
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       className=' h-screen w-full flex justify-center items-center'
     >
       <h1 className=' text-center text-2xl text-white'>Hello App</h1>
+      {reactions.map(reaction => (
+        <FlyingReaction
+          key={reaction.timestamp.toString()}
+          x={reaction.point.x}
+          y={reaction.point.y}
+          timestamp={reaction.timestamp}
+          value={reaction.value}
+        />
+      ))}
       <LiveCursors others={others} />
       {cursor && (
         <CursorChat
@@ -90,7 +171,7 @@ const Live = () => {
         />
       )}
       {cursorState.mode === CursorMode.ReactionSelector && (
-        <ReactionSelector setReaction={reaction => setReaction(reaction)} />
+        <ReactionSelector setReaction={setReaction} />
       )}
     </div>
   )
