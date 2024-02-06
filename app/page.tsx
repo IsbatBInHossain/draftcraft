@@ -1,3 +1,10 @@
+'use client'
+import Live from '@/components/Live'
+
 export default function Page() {
-  return <h1>Hello App</h1>
+  return (
+    <div>
+      <Live />
+    </div>
+  )
 }
