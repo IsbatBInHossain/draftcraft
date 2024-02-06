@@ -2,7 +2,8 @@ import { useMyPresence, useOthers } from '@/liveblocks.config'
 import LiveCursors from './cursor/LiveCursors'
 import { useCallback, useEffect, useState } from 'react'
 import CursorChat from './cursor/CursorChat'
-import { CursorMode, CursorState } from '@/types/type'
+import { CursorMode, CursorState, Reaction } from '@/types/type'
+import ReactionSelector from './reaction/ReactionButton'
 
 const Live = () => {
   const others = useOthers()
@@ -10,6 +11,7 @@ const Live = () => {
   const [cursorState, setCursorState] = useState<CursorState>({
     mode: CursorMode.Hidden,
   })
+  const [reaction, setReaction] = useState<Reaction[]>([])
 
   // Listen to keyboard events to change the cursor state
   useEffect(() => {
@@ -86,6 +88,9 @@ const Live = () => {
           setCursorState={setCursorState}
           updateMyPresence={updateMyPresence}
         />
+      )}
+      {cursorState.mode === CursorMode.ReactionSelector && (
+        <ReactionSelector setReaction={reaction => setReaction(reaction)} />
       )}
     </div>
   )
