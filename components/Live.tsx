@@ -1,10 +1,47 @@
 import { useMyPresence, useOthers } from '@/liveblocks.config'
 import LiveCursors from './cursor/LiveCursors'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import CursorChat from './cursor/CursorChat'
+import { CursorMode, CursorState } from '@/types/type'
 
 const Live = () => {
   const others = useOthers()
   const [{ cursor }, updateMyPresence] = useMyPresence() as any
+  const [cursorState, setCursorState] = useState<CursorState>({
+    mode: CursorMode.Hidden,
+  })
+
+  // Listen to keyboard events to change the cursor state
+  useEffect(() => {
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === '/') {
+        setCursorState({
+          mode: CursorMode.Chat,
+          previousMessage: null,
+          message: '',
+        })
+      } else if (e.key === 'Escape') {
+        updateMyPresence({ message: '' })
+        setCursorState({ mode: CursorMode.Hidden })
+      } else if (e.key === 'e') {
+        setCursorState({ mode: CursorMode.ReactionSelector })
+      }
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/') {
+        e.preventDefault()
+      }
+    }
+
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [updateMyPresence])
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent) => {
@@ -18,7 +55,7 @@ const Live = () => {
 
   const handlePointerLeave = useCallback(
     (event: React.PointerEvent) => {
-      event.preventDefault()
+      setCursorState({ mode: CursorMode.Hidden })
       updateMyPresence({ cursor: null, message: null })
     },
     [updateMyPresence]
@@ -42,6 +79,14 @@ const Live = () => {
     >
       <h1 className=' text-center text-2xl text-white'>Hello App</h1>
       <LiveCursors others={others} />
+      {cursor && (
+        <CursorChat
+          cursor={cursor}
+          cursorState={cursorState}
+          setCursorState={setCursorState}
+          updateMyPresence={updateMyPresence}
+        />
+      )}
     </div>
   )
 }
