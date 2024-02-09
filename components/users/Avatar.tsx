@@ -3,13 +3,13 @@ import React from 'react'
 import styles from './Avatar.module.css'
 import Image from 'next/image'
 
-export function Avatar({
+const Avatar = ({
   name,
   otherStyles,
 }: {
   name: string
   otherStyles: string
-}) {
+}) => {
   return (
     <div
       className={`${styles.avatar} ${otherStyles} h-9 w-9`}
@@ -26,3 +26,5 @@ export function Avatar({
     </div>
   )
 }
+
+export default Avatar
