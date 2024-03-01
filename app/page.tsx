@@ -30,7 +30,9 @@ export default function Page() {
       })
     })
 
-    window.addEventListener('resize', () => handleResize({ canvas }))
+    window.addEventListener('resize', () =>
+      handleResize({ canvas: fabricRef.current })
+    )
   }, [])
 
   return (
@@ -38,7 +40,7 @@ export default function Page() {
       <Navbar />
       <section className=' flex h-full flex-row'>
         <LeftSidebar />
-        <Live />
+        <Live canvasRef={canvasRef} />
         <RightSidebar />
       </section>
     </main>
