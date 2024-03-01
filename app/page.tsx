@@ -8,9 +8,13 @@ import { useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric'
 import {
   handleCanvasMouseDown,
+  handleCanvasMouseUp,
+  handleCanvasObjectModified,
+  handleCanvasObjectMoving,
   handleCanvaseMouseMove,
   handleResize,
   initializeFabric,
+  renderCanvas,
 } from '@/lib/canvas'
 import { ActiveElement } from '@/types/type'
 import { useMutation, useStorage } from '@/liveblocks.config'
@@ -21,6 +25,7 @@ export default function Page() {
   const isDrawing = useRef(false)
   const shapeRef = useRef<fabric.Object | null>(null)
   const selectedShapeRef = useRef<string | null>(null)
+  const activeObjectRef = useRef<fabric.Object | null>(null)
 
   const canvasObjects = useStorage(root => root.canvasObjects)
 
@@ -69,10 +74,43 @@ export default function Page() {
       })
     })
 
+    canvas.on('mouse:up', () => {
+      handleCanvasMouseUp({
+        canvas,
+        isDrawing,
+        shapeRef,
+        selectedShapeRef,
+        syncShapeInStorage,
+        setActiveElement,
+        activeObjectRef,
+      })
+    })
+
+    canvas.on('object:modified', (options: any) => {
+      handleCanvasObjectModified({
+        options,
+        syncShapeInStorage,
+      })
+    })
+
+    canvas.on('object:moving', options => {
+      handleCanvasObjectMoving({
+        options,
+      })
+    })
+
     window.addEventListener('resize', () =>
       handleResize({ canvas: fabricRef.current })
     )
   }, [])
+
+  useEffect(() => {
+    renderCanvas({
+      fabricRef,
+      canvasObjects,
+      activeObjectRef,
+    })
+  }, [canvasObjects])
 
   return (
     <main className=' h-screen overflow-hidden'>
